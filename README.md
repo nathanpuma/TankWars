@@ -1,7 +1,7 @@
-# Tank Game
+# Tank Wars
 
 ## Overview
-Tank Game is a fun and interactive game where players control tanks, navigate terrain, and engage in battles. Each tank has health, fuel, fire mechanics, parachute status.
+Tank Wars is an interactive game where players control tanks, navigate terrain, and engage in battles. Each tank has health, fuel, fire mechanics, parachute status.
 
 ## Features
 - Multiple levels
