@@ -1,0 +1,400 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Tank.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">scaffold</a> &gt; <a href="index.source.html" class="el_package">Tanks</a> &gt; <span class="el_source">Tank.java</span></div><h1>Tank.java</h1><pre class="source lang-java linenums">package Tanks;
+
+import java.util.ArrayList;
+import processing.core.PApplet;
+import processing.core.PImage;
+import java.util.Iterator;
+
+public class Tank {
+    private PApplet app;
+    private float x, y; // Position of the tank
+    private float angle; // Direction the turret is facing
+    private int colour; // Color of the tank
+    private Terrain terrain; // Reference to the Terrain object for checking height
+<span class="fc" id="L14">    private float moveSpeed = 60; // Speed at which the tank moves horizontally</span>
+<span class="fc" id="L15">    private int fuel = 250; // Starting fuel for each level</span>
+    private PImage fuelImage; // Image for the fuel icon
+    private PImage parachuteImage;
+<span class="fc" id="L18">    private int health = 100; // Initial health</span>
+<span class="fc" id="L19">    private int power = 50; // Initial power, determines projectile speed</span>
+    private ArrayList&lt;Projectile&gt; projectiles; // List to hold multiple projectiles
+    private boolean isActive; // Indicates if this tank is the active one
+    private char identifier;
+    private Scoreboard scoreboard; 
+<span class="fc" id="L24">    private final int maxPower = 100;  // Maximum power limit</span>
+<span class="fc" id="L25">    private final int minPower = 0;    // Minimum power limit</span>
+<span class="fc" id="L26">    private boolean shieldActive = false;</span>
+<span class="fc" id="L27">    private int parachutes = 1; // Default number of parachutes</span>
+<span class="fc" id="L28">    private int parachutesUsedThisLevel = 0;</span>
+    private int explosionRadius; // Explosion radius will vary
+<span class="fc" id="L30">    private boolean hasExploded = false;</span>
+
+<span class="fc" id="L32">    public Tank(PApplet app, float x, float y, int colour, Terrain terrain, char identifier, Scoreboard scoreboard) {</span>
+<span class="fc" id="L33">        this.app = app;</span>
+<span class="fc" id="L34">        this.x = x;</span>
+<span class="fc" id="L35">        this.y = y;</span>
+<span class="fc" id="L36">        this.colour = colour;</span>
+<span class="fc" id="L37">        this.angle = 0;</span>
+<span class="fc" id="L38">        this.terrain = terrain;</span>
+<span class="fc" id="L39">        this.fuelImage = app.loadImage(&quot;Tanks/fuel.png&quot;); </span>
+<span class="fc" id="L40">        this.parachuteImage = app.loadImage(&quot;Tanks/parachute.png&quot;);</span>
+<span class="fc" id="L41">        this.isActive = false; // Initially, no tank is active until set</span>
+<span class="fc" id="L42">        this.projectiles = new ArrayList&lt;&gt;(); // Initialize the projectiles list</span>
+<span class="fc" id="L43">        this.identifier = identifier;</span>
+<span class="fc" id="L44">        this.scoreboard = scoreboard;</span>
+<span class="fc" id="L45">        updatePosition(false); // Update the tank's position based on the terrain height</span>
+        
+<span class="fc" id="L47">    }</span>
+
+    public Scoreboard getScoreboard() {
+<span class="nc" id="L50">        return scoreboard;</span>
+    }
+
+    public char getIdentifier() {
+<span class="fc" id="L54">        return identifier;</span>
+    }
+
+    // Activates or deactivates the tank
+    public void setActive(boolean isActive) {
+<span class="fc" id="L59">        this.isActive = isActive;</span>
+<span class="fc" id="L60">    }</span>
+
+    public void setY(float y) {
+<span class="nc" id="L63">        this.y = y;</span>
+<span class="nc" id="L64">    }</span>
+
+    // Updates the tank's vertical position to align with the terrain
+    public void calibratePosition() {
+<span class="fc" id="L68">        float terrainHeight = terrain.getHeightAtX(x);</span>
+<span class="pc bpc" id="L69" title="1 of 2 branches missed.">        if (y &gt; terrainHeight) {</span>
+<span class="nc" id="L70">            y = terrainHeight;  // Set y to terrain height if it's above, ensuring tanks are 'on' the ground</span>
+        }
+<span class="fc" id="L72">    }</span>
+    
+    public void updatePosition(boolean isMoving) {
+<span class="fc" id="L75">        float terrainHeight = terrain.getHeightAtX(x);</span>
+<span class="fc" id="L76">        float previousY = y; // Store the previous Y position to compare after potential fall</span>
+    
+        // Calculate the fall speed based on whether a parachute is available
+<span class="fc" id="L79">        float fallSpeed = 120 / app.frameRate; // Default fall speed without parachute</span>
+<span class="fc" id="L80">        boolean parachuteDeployed = false;</span>
+    
+        // When moving, avoid deploying parachutes or calculating fall damage
+<span class="pc bpc" id="L83" title="1 of 2 branches missed.">        if (!isMoving) {</span>
+<span class="pc bpc" id="L84" title="2 of 4 branches missed.">            if (parachutes &gt; 0 &amp;&amp; y &lt; terrainHeight) {</span>
+<span class="nc" id="L85">                fallSpeed = 60 / app.frameRate; // Reduced fall speed with parachute</span>
+<span class="nc" id="L86">                parachuteDeployed = true;</span>
+            }
+        }
+    
+        // Simulate falling or descending
+<span class="fc" id="L91">        y += fallSpeed;</span>
+<span class="fc" id="L92">        y = Math.min(y, terrainHeight); // Ensure the tank does not go below the terrain</span>
+    
+        // Apply falling logic and check parachute usage if not just moving horizontally
+<span class="pc bpc" id="L95" title="1 of 2 branches missed.">        if (!isMoving) {</span>
+<span class="pc bpc" id="L96" title="3 of 4 branches missed.">            if (parachuteDeployed &amp;&amp; y &gt;= terrainHeight) {</span>
+<span class="nc" id="L97">                parachutes--; // Decrement parachute count if it was used</span>
+<span class="nc" id="L98">                parachutesUsedThisLevel++; // Increment the used parachute count for the level</span>
+<span class="pc bpc" id="L99" title="4 of 6 branches missed.">            } else if (!parachuteDeployed &amp;&amp; previousY &lt; terrainHeight &amp;&amp; y &gt;= terrainHeight) {</span>
+<span class="nc bnc" id="L100" title="All 2 branches missed.">                if (previousY &lt; y) {</span>
+<span class="nc" id="L101">                    int verticalDistance = (int) (terrainHeight - previousY);</span>
+<span class="nc" id="L102">                    int damage = verticalDistance; // Damage is 1 HP per pixel fallen</span>
+<span class="nc" id="L103">                    applyDamage(damage, null);</span>
+                }
+            }
+        }
+<span class="fc" id="L107">    }</span>
+    
+
+    
+    public void resetParachuteForNewLevel() {
+<span class="nc bnc" id="L112" title="All 2 branches missed.">        if (parachutesUsedThisLevel &gt; 0) {</span>
+<span class="nc" id="L113">            parachutes = 1; // Reset to one parachute per level</span>
+<span class="nc" id="L114">            parachutesUsedThisLevel = 0; // Reset the count of used parachutes</span>
+        }
+<span class="nc" id="L116">    }</span>
+    
+    
+    public void recalibratePosition() {
+<span class="fc" id="L120">        updatePosition(false); // Calls existing method to adjust position based on terrain height</span>
+<span class="fc" id="L121">    }</span>
+    
+    // Moves the tank left and consumes fuel
+    public void moveLeft() {
+<span class="nc bnc" id="L125" title="All 2 branches missed.">        if (fuel &gt; 0) {</span>
+<span class="nc" id="L126">            float distance = moveSpeed / app.frameRate;</span>
+<span class="nc" id="L127">            x -= distance;</span>
+<span class="nc" id="L128">            updatePosition(true); // Pass true to indicate it's a movement update</span>
+<span class="nc" id="L129">            fuel -= distance;</span>
+        }
+<span class="nc" id="L131">    }</span>
+    
+    public void moveRight() {
+<span class="nc bnc" id="L134" title="All 2 branches missed.">        if (fuel &gt; 0) {</span>
+<span class="nc" id="L135">            float distance = moveSpeed / app.frameRate;</span>
+<span class="nc" id="L136">            x += distance;</span>
+<span class="nc" id="L137">            updatePosition(true); // Pass true to indicate it's a movement update</span>
+<span class="nc" id="L138">            fuel -= distance;</span>
+        }
+<span class="nc" id="L140">    }</span>
+
+    // Rotates the turret left within limits
+    public void rotateTurretLeft() {
+<span class="nc" id="L144">        float rotationSpeed = 3; // +3 radians per second</span>
+<span class="nc" id="L145">        angle = Math.min(angle + rotationSpeed / app.frameRate, (float) Math.PI / 2);</span>
+<span class="nc" id="L146">    }</span>
+
+    // Rotates the turret right within limits
+    public void rotateTurretRight() {
+<span class="nc" id="L150">        float rotationSpeed = 3; // -3 radians per second</span>
+<span class="nc" id="L151">        angle = Math.max(angle - rotationSpeed / app.frameRate, -(float) Math.PI / 2);</span>
+<span class="nc" id="L152">    }</span>
+
+    public void fire(Wind wind, ArrayList&lt;Explosion&gt; explosions, Terrain terrain, ArrayList&lt;Tank&gt; allTanks) {
+<span class="nc" id="L155">        System.out.println(&quot;Firing projectile at angle: &quot; + angle + &quot; radians&quot;);</span>
+        //Projectile newProjectile = new Projectile(app, x, y, angle, power, wind.getWindForce(), this);
+
+<span class="nc" id="L158">        Projectile newProjectile = new Projectile(app, x, y, (float) (-angle * (180.0 / Math.PI)), power, wind.getWindForce(), this);</span>
+<span class="nc" id="L159">        projectiles.add(newProjectile);</span>
+<span class="nc" id="L160">    }</span>
+
+    // Updates and manages projectiles
+    public void updateProjectile(ArrayList&lt;Explosion&gt; explosions, Terrain terrain, ArrayList&lt;Tank&gt; allTanks) {
+<span class="fc" id="L164">        Iterator&lt;Projectile&gt; it = projectiles.iterator();</span>
+<span class="pc bpc" id="L165" title="1 of 2 branches missed.">        while (it.hasNext()) {</span>
+<span class="nc" id="L166">            Projectile projectile = it.next();</span>
+<span class="nc" id="L167">            projectile.update();</span>
+<span class="nc bnc" id="L168" title="All 2 branches missed.">            if (projectile.checkImpact(terrain)) {</span>
+<span class="nc" id="L169">                explosions.add(new Explosion(app, projectile.getX(), projectile.getY(), terrain, allTanks, projectile.getOwner()));</span>
+<span class="nc" id="L170">                it.remove(); // Remove the projectile as it has impacted</span>
+<span class="nc bnc" id="L171" title="All 2 branches missed.">            } else if (projectile.hasLanded()) {</span>
+<span class="nc" id="L172">                it.remove(); // Remove projectiles that have landed without impact</span>
+            }
+<span class="nc" id="L174">        }</span>
+<span class="fc" id="L175">    }</span>
+
+    public void applyDamage(int damage, Tank attacker) {
+<span class="nc bnc" id="L178" title="All 2 branches missed.">        if (!shieldActive) {</span>
+<span class="nc" id="L179">            int oldHealth = health;</span>
+<span class="nc" id="L180">            health -= damage;</span>
+<span class="nc" id="L181">            health = Math.max(0, health);</span>
+    
+            // Adjust power to not exceed the new health
+<span class="nc bnc" id="L184" title="All 2 branches missed.">            if (power &gt; health) {</span>
+<span class="nc" id="L185">                power = health;</span>
+<span class="nc" id="L186">                displayPower(); // Update power display as it might have changed</span>
+            }
+    
+<span class="nc bnc" id="L189" title="All 4 branches missed.">            if (health &lt;= 0 &amp;&amp; !hasExploded) {</span>
+<span class="nc" id="L190">                explode(15);</span>
+            }
+<span class="nc bnc" id="L192" title="All 4 branches missed.">            if (attacker != null &amp;&amp; attacker != this) {</span>
+<span class="nc" id="L193">                attacker.getScoreboard().updateScore(attacker.getIdentifier(), oldHealth - health);</span>
+            }
+<span class="nc" id="L195">        } else {</span>
+<span class="nc" id="L196">            shieldActive = false;</span>
+        }
+<span class="nc" id="L198">    }</span>
+    
+
+
+    public int getColour() {
+<span class="nc" id="L203">        return colour;</span>
+    }
+
+    public float getX() {
+<span class="fc" id="L207">        return x;</span>
+    }
+
+    public float getY() {
+<span class="fc" id="L211">        return y;</span>
+    }
+
+    public int getHealth() {
+<span class="fc" id="L215">        return health;</span>
+    }
+
+    public boolean isActive() {
+<span class="fc" id="L219">        return this.isActive;</span>
+    }
+
+    public void increasePower() {
+<span class="nc bnc" id="L223" title="All 4 branches missed.">        if (isActive &amp;&amp; health &gt; 0) { // Only allow power increase if the tank is active and has health</span>
+<span class="nc" id="L224">            int oldPower = power; // Store old power for comparison</span>
+<span class="nc" id="L225">            power += 36 / app.frameRate;  // Increase power by 36 units per second</span>
+<span class="nc" id="L226">            power = Math.min(power, maxPower); // Cap power at maxPower</span>
+<span class="nc" id="L227">            power = Math.min(power, health); // Ensure power does not exceed current health</span>
+    
+            // Display power should not show higher than actual usable power
+<span class="nc bnc" id="L230" title="All 2 branches missed.">            if (power != oldPower) { // Only update if there's a change</span>
+<span class="nc" id="L231">                displayPower(); // Update display to reflect new power level</span>
+            }
+        }
+<span class="nc" id="L234">    }</span>
+    
+    public void decreasePower() {
+<span class="nc bnc" id="L237" title="All 4 branches missed.">        if (isActive &amp;&amp; health &gt; 0) { // Only allow power decrease if the tank is active and has health</span>
+<span class="nc" id="L238">            int oldPower = power; // Store old power for comparison</span>
+<span class="nc" id="L239">            power -= 36 / app.frameRate;  // Decrease power by 36 units per second</span>
+<span class="nc" id="L240">            power = Math.max(power, minPower); // Ensure power does not go below minPower</span>
+<span class="nc" id="L241">            power = Math.min(power, health); // Ensure power does not exceed current health</span>
+    
+            // Display power should not show lower than actual usable power
+<span class="nc bnc" id="L244" title="All 2 branches missed.">            if (power != oldPower) { // Only update if there's a change</span>
+<span class="nc" id="L245">                displayPower(); // Update display to reflect new power level</span>
+            }
+        }
+<span class="nc" id="L248">    }</span>
+
+    public void repair() {
+<span class="nc bnc" id="L251" title="All 2 branches missed.">        if (scoreboard.getScore(identifier) &gt;= 20) { // Assuming the scoreboard can return the score for a given identifier</span>
+<span class="nc" id="L252">            health += 20;</span>
+<span class="nc" id="L253">            health = Math.min(health, 100); // Cap health at 100</span>
+<span class="nc" id="L254">            scoreboard.updateScore(identifier, -20); // Deduct score</span>
+        }
+<span class="nc" id="L256">    }</span>
+
+    public void refuel() {
+<span class="nc bnc" id="L259" title="All 2 branches missed.">        if (scoreboard.getScore(identifier) &gt;= 10) {</span>
+<span class="nc" id="L260">            fuel += 200;</span>
+<span class="nc" id="L261">            scoreboard.updateScore(identifier, -10); // Deduct score</span>
+        }
+<span class="nc" id="L263">    }</span>
+
+    public void activateShield() {
+<span class="nc bnc" id="L266" title="All 2 branches missed.">        if (scoreboard.getScore(identifier) &gt;= 20) {</span>
+<span class="nc" id="L267">            shieldActive = true;</span>
+<span class="nc" id="L268">            scoreboard.updateScore(identifier, -20); // Deduct the cost of the shield</span>
+        }
+<span class="nc" id="L270">    }</span>
+
+    public void checkAndHandleFallingBelowMap() {
+<span class="nc bnc" id="L273" title="All 4 branches missed.">        if (y &gt; app.height &amp;&amp; !hasExploded) {</span>
+<span class="nc" id="L274">            explode(30); // Explode with a radius of 30 if it falls below the map</span>
+        }
+<span class="nc" id="L276">    }</span>
+
+    private void explode(int radius) {
+<span class="nc" id="L279">        this.explosionRadius = radius;</span>
+<span class="nc" id="L280">        this.hasExploded = true;</span>
+<span class="nc" id="L281">        displayExplosion(); // This will render the explosion visually</span>
+<span class="nc" id="L282">    }</span>
+
+    private void displayExplosion() {
+<span class="nc" id="L285">        app.fill(255, 0, 0); // Use red color for the explosion</span>
+<span class="nc" id="L286">        app.noStroke();</span>
+<span class="nc" id="L287">        app.ellipse(x, y, explosionRadius * 2, explosionRadius * 2); // Draw the explosion as a simple circle</span>
+<span class="nc" id="L288">    }</span>
+
+    public void displayPower() {
+<span class="fc" id="L291">        app.fill(0);  // White color for text</span>
+<span class="fc" id="L292">        app.textSize(16);</span>
+<span class="fc" id="L293">        app.textAlign(PApplet.CENTER, PApplet.TOP);</span>
+<span class="fc" id="L294">        app.text(&quot;Power: &quot; + PApplet.round(power), app.width / 2, 50);  // Display at a fixed position</span>
+<span class="fc" id="L295">    }</span>
+
+    private void displayFuelInfo() {
+<span class="fc" id="L298">        int newWidth = fuelImage.width / 10;</span>
+<span class="fc" id="L299">        int newHeight = fuelImage.height / 10;</span>
+<span class="fc" id="L300">        app.image(fuelImage, 135, 5, newWidth, newHeight);</span>
+<span class="fc" id="L301">        app.fill(0);</span>
+<span class="fc" id="L302">        app.textSize(16);</span>
+<span class="fc" id="L303">        app.textAlign(PApplet.LEFT, PApplet.TOP);</span>
+<span class="fc" id="L304">        app.text(&quot;Fuel: &quot; + fuel, 165, 10);</span>
+<span class="fc" id="L305">    }</span>
+    
+    private void displayParachuteInfo() {
+<span class="fc" id="L308">        int imageWidth = parachuteImage.width / 2;</span>
+<span class="fc" id="L309">        int imageHeight = parachuteImage.height / 2;</span>
+<span class="fc" id="L310">        int xOffset = 135; // Starting position, align under the fuel icon or adjust as needed</span>
+<span class="fc" id="L311">        int yOffset = 50; // Position below the fuel info</span>
+    
+        // Display parachute image
+<span class="fc" id="L314">        app.image(parachuteImage, xOffset, yOffset, imageWidth, imageHeight);</span>
+        // Display the number of parachutes remaining next to the image
+<span class="fc" id="L316">        app.fill(0); // Set text color to white</span>
+<span class="fc" id="L317">        app.textSize(16);</span>
+<span class="fc" id="L318">        app.textAlign(PApplet.LEFT, PApplet.TOP);</span>
+<span class="fc" id="L319">        app.text(parachutes, xOffset + imageWidth + 5, yOffset + imageHeight / 2 - 8); // Adjust text positioning for alignment</span>
+<span class="fc" id="L320">    }</span>
+
+    private void displayTurnIndicator() {
+<span class="fc" id="L323">        app.pushMatrix();</span>
+<span class="fc" id="L324">        app.translate(x, y - 100);</span>
+<span class="fc" id="L325">        app.fill(0, 0, 0);</span>
+<span class="fc" id="L326">        app.noStroke();</span>
+<span class="fc" id="L327">        app.rect(-1.5f, 0, 3, 30);</span>
+<span class="fc" id="L328">        app.triangle(-10, 30, 10, 30, 0, 45);</span>
+<span class="fc" id="L329">        app.popMatrix();</span>
+<span class="fc" id="L330">    }</span>
+
+    public void displayHealthBar() {
+<span class="pc bpc" id="L333" title="1 of 2 branches missed.">        if (isActive) {</span>
+<span class="fc" id="L334">            int healthBarX = app.width / 2 - 100;</span>
+<span class="fc" id="L335">            int healthBarY = 10;</span>
+<span class="fc" id="L336">            int healthBarWidth = 200;  // The full potential width of the health bar</span>
+<span class="fc" id="L337">            int healthBarHeight = 20;</span>
+    
+            // Draw the health bar in the tank's color based on current health
+<span class="fc" id="L340">            app.fill(colour);</span>
+<span class="fc" id="L341">            float currentHealthWidth = healthBarWidth * health / 100;</span>
+<span class="fc" id="L342">            app.rect(healthBarX, healthBarY, currentHealthWidth, healthBarHeight);</span>
+    
+            // Draw power indicator line
+<span class="fc" id="L345">            float powerRatio = (float) power / maxPower;</span>
+<span class="fc" id="L346">            float powerIndicatorPosition = healthBarWidth * powerRatio;</span>
+<span class="fc" id="L347">            app.stroke(0, 255, 0); // Green color for the power indicator line</span>
+<span class="fc" id="L348">            app.strokeWeight(2);</span>
+<span class="fc" id="L349">            app.line(healthBarX + powerIndicatorPosition, healthBarY - 5, healthBarX + powerIndicatorPosition, healthBarY + healthBarHeight + 5);</span>
+    
+            // Draw text for health
+<span class="fc" id="L352">            app.fill(0); // White color for the text</span>
+<span class="fc" id="L353">            app.textSize(16);</span>
+<span class="fc" id="L354">            app.textAlign(PApplet.CENTER, PApplet.TOP);</span>
+<span class="fc" id="L355">            app.text(&quot;Health: &quot; + health, app.width / 2, 35);</span>
+        }
+<span class="fc" id="L357">    }</span>
+    
+    
+    
+
+    // Displays the tank and its projectiles
+    public void display() {
+<span class="pc bpc" id="L364" title="1 of 2 branches missed.">        if (!hasExploded) {</span>
+<span class="fc" id="L365">            app.pushMatrix();</span>
+<span class="fc" id="L366">            app.noStroke();</span>
+<span class="fc" id="L367">            app.translate(x, y);</span>
+<span class="pc bpc" id="L368" title="1 of 2 branches missed.">            if (shieldActive) {</span>
+<span class="nc" id="L369">                app.fill(0, 0, 255, 100); // Semi-transparent blue bubble</span>
+<span class="nc" id="L370">                app.ellipse(0, 0, 40, 40); // Assuming the shield bubble size</span>
+            } 
+<span class="pc bpc" id="L372" title="2 of 4 branches missed.">            if (parachutes &gt; 0 &amp;&amp; y &lt; terrain.getHeightAtX(x)) {</span>
+<span class="nc" id="L373">                app.image(parachuteImage, -30, -60); // Display parachute above tank</span>
+            }
+
+<span class="fc" id="L376">            app.fill(colour);</span>
+<span class="fc" id="L377">            app.rect(-15, 0, 30, 10);  // Draw the tank body</span>
+<span class="fc" id="L378">            app.pushMatrix();</span>
+<span class="fc" id="L379">            app.rotate(-angle);</span>
+<span class="fc" id="L380">            app.fill(0);</span>
+<span class="fc" id="L381">            app.rect(-2.5f, -20, 5, 20);  // Draw the turret</span>
+<span class="fc" id="L382">            app.popMatrix();</span>
+<span class="fc" id="L383">            app.popMatrix();</span>
+
+<span class="pc bpc" id="L385" title="1 of 2 branches missed.">            for (Projectile projectile : projectiles) {</span>
+<span class="nc" id="L386">                projectile.display();</span>
+<span class="nc" id="L387">            }</span>
+
+<span class="fc bfc" id="L389" title="All 2 branches covered.">            if (isActive) {</span>
+<span class="fc" id="L390">                displayFuelInfo();</span>
+<span class="fc" id="L391">                displayTurnIndicator();</span>
+<span class="fc" id="L392">                displayParachuteInfo();</span>
+            }
+        } else {
+<span class="nc" id="L395">            displayExplosion();</span>
+        }
+<span class="fc" id="L397">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

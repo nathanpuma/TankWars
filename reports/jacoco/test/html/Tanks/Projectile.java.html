@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Projectile.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">scaffold</a> &gt; <a href="index.source.html" class="el_package">Tanks</a> &gt; <span class="el_source">Projectile.java</span></div><h1>Projectile.java</h1><pre class="source lang-java linenums">package Tanks;
+
+import processing.core.PApplet;
+
+public class Projectile {
+    private PApplet app;
+    private float x, y; // Current position of the projectile
+    private float vx, vy; // Velocity components of the projectile
+    static final float GRAVITY = 3.6f; // Gravity effect per frame
+    private float windEffect; // Added to incorporate wind as a horizontal acceleration
+    private Tank owner;
+    private int colour;
+
+<span class="nc" id="L14">    public Projectile(PApplet app, float x, float y, float angle, int power, float windForce, Tank owner) {</span>
+<span class="nc" id="L15">        this.app = app;</span>
+<span class="nc" id="L16">        this.x = x;</span>
+<span class="nc" id="L17">        this.y = y;</span>
+    
+<span class="nc" id="L19">        float radians = PApplet.radians(angle - 90);  // Adjust to make 0 degrees point upwards</span>
+<span class="nc" id="L20">        float velocityMagnitude = PApplet.map(power, 0, 100, 1, 9);</span>
+<span class="nc" id="L21">        this.vx = velocityMagnitude * PApplet.cos(radians);</span>
+<span class="nc" id="L22">        this.vy = velocityMagnitude * PApplet.sin(radians);</span>
+<span class="nc" id="L23">        this.windEffect = windForce * 0.03f;</span>
+<span class="nc" id="L24">        this.owner = owner;</span>
+<span class="nc" id="L25">        this.colour = owner.getColour();</span>
+<span class="nc" id="L26">    }</span>
+    
+
+
+    public Tank getOwner() {
+<span class="nc" id="L31">        return owner;</span>
+    }
+
+    public void update() {
+        // Apply wind effect to horizontal velocity
+<span class="nc" id="L36">        vx += windEffect / app.frameRate;</span>
+
+        // Update position with new velocities
+<span class="nc" id="L39">        x += vx;</span>
+<span class="nc" id="L40">        y += vy;</span>
+
+        // Apply gravity to vertical velocity
+<span class="nc" id="L43">        vy += GRAVITY / app.frameRate;</span>
+<span class="nc" id="L44">    }</span>
+
+    public float getX() {
+<span class="nc" id="L47">        return x;</span>
+    }
+
+    public float getY() {
+<span class="nc" id="L51">        return y;</span>
+    }
+
+    public boolean checkImpact(Terrain terrain) {
+<span class="nc" id="L55">        float terrainHeight = terrain.getHeightAtX(x);</span>
+<span class="nc bnc" id="L56" title="All 2 branches missed.">        return y &gt;= terrainHeight; // Impact detection based on y-coordinate</span>
+    }
+
+    public boolean hasLanded() {
+<span class="nc bnc" id="L60" title="All 8 branches missed.">        return y &gt;= app.height || y &lt;= 0 || x &lt; 0 || x &gt; app.width;</span>
+    }
+
+    public void display() {
+<span class="nc" id="L64">        app.fill(colour);</span>
+<span class="nc" id="L65">        app.ellipse(x, y, 10, 10);</span>
+<span class="nc" id="L66">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

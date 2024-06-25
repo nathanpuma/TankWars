@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Scoreboard.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">scaffold</a> &gt; <a href="index.source.html" class="el_package">Tanks</a> &gt; <span class="el_source">Scoreboard.java</span></div><h1>Scoreboard.java</h1><pre class="source lang-java linenums">package Tanks;
+
+import processing.core.PApplet;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
+
+public class Scoreboard {
+    private PApplet parent; // The sketch window where everything is drawn.
+    private GameConfig config; // Configuration for game settings.
+    private HashMap&lt;Character, Integer&gt; scores; // Scores for each player.
+<span class="fc" id="L13">    private long lastTimeDisplayed = 0;  // Time when the last score was displayed.</span>
+<span class="fc" id="L14">    private int scoreIndex = 0;  // Index for current score to display.</span>
+    private List&lt;Map.Entry&lt;Character, Integer&gt;&gt; entries;
+
+<span class="fc" id="L17">    public Scoreboard(PApplet parent, GameConfig config) {</span>
+<span class="fc" id="L18">        this.parent = parent;</span>
+<span class="fc" id="L19">        this.config = config;</span>
+<span class="fc" id="L20">        this.scores = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L21">        this.entries = null;</span>
+<span class="fc" id="L22">    }</span>
+
+    // Initialize scores for all tanks in the game.
+    public void initializeScores(ArrayList&lt;Tank&gt; tanks) {
+<span class="fc bfc" id="L26" title="All 2 branches covered.">        for (Tank tank : tanks) {</span>
+<span class="fc" id="L27">            scores.putIfAbsent(tank.getIdentifier(), 0); // Put 0 if tank's identifier is not already in the map.</span>
+<span class="fc" id="L28">        }</span>
+<span class="fc" id="L29">    }</span>
+
+    // Update the score for a particular tank.
+    public void updateScore(char tankId, int scoreToAdd) {
+<span class="nc bnc" id="L33" title="All 2 branches missed.">        if (scores.containsKey(tankId)) {</span>
+<span class="nc" id="L34">            scores.put(tankId, scores.get(tankId) + scoreToAdd); // Add to current score.</span>
+        } else {
+<span class="nc" id="L36">            scores.put(tankId, scoreToAdd); // Set initial score if not present.</span>
+        }
+<span class="nc" id="L38">    }</span>
+
+    public void resetScores() {
+<span class="nc bnc" id="L41" title="All 2 branches missed.">        for (Map.Entry&lt;Character, Integer&gt; entry : scores.entrySet()) {</span>
+<span class="nc" id="L42">            entry.setValue(0); // Reset each score to zero</span>
+<span class="nc" id="L43">        }</span>
+<span class="nc" id="L44">    }</span>
+
+    // Get the score of a particular player.
+    public int getScore(char playerID) {
+<span class="fc" id="L48">        return scores.getOrDefault(playerID, 0);</span>
+    }
+
+    // Display the ongoing scoreboard during the game.
+    public void display() {
+<span class="fc" id="L53">        int margin = 10;</span>
+<span class="fc" id="L54">        int headingHeight = 20;</span>
+<span class="fc" id="L55">        int rowHeight = 20;</span>
+<span class="fc" id="L56">        int scoreboardWidth = 150;</span>
+<span class="fc" id="L57">        int scoreboardHeight = headingHeight + 4 * rowHeight;</span>
+<span class="fc" id="L58">        int scoreboardX = parent.width - scoreboardWidth - margin;</span>
+<span class="fc" id="L59">        int scoreboardY = margin + 60;</span>
+
+<span class="fc" id="L61">        parent.fill(255, 255, 255, 0); // Transparent background.</span>
+<span class="fc" id="L62">        parent.noStroke();</span>
+<span class="fc" id="L63">        parent.rect(scoreboardX, scoreboardY, scoreboardWidth, scoreboardHeight);</span>
+
+<span class="fc" id="L65">        parent.fill(0); // Black text.</span>
+<span class="fc" id="L66">        parent.textAlign(parent.LEFT, parent.CENTER);</span>
+<span class="fc" id="L67">        parent.text(&quot;Scores&quot;, scoreboardX + margin, scoreboardY + headingHeight / 2);</span>
+
+<span class="fc" id="L69">        int y = scoreboardY + headingHeight;</span>
+<span class="fc bfc" id="L70" title="All 2 branches covered.">        for (char playerID = 'A'; playerID &lt;= 'D'; playerID++) {</span>
+<span class="fc" id="L71">            int score = getScore(playerID);</span>
+<span class="fc" id="L72">            int color = config.getPlayerColor(playerID);</span>
+<span class="fc" id="L73">            parent.fill(color);</span>
+<span class="fc" id="L74">            parent.text(&quot;Player &quot; + playerID + &quot;: &quot; + score, scoreboardX + margin, y + rowHeight / 2);</span>
+<span class="fc" id="L75">            y += rowHeight;</span>
+        }
+
+<span class="fc" id="L78">        parent.stroke(0); // Black border.</span>
+<span class="fc" id="L79">        parent.strokeWeight(2);</span>
+<span class="fc" id="L80">        parent.noFill();</span>
+<span class="fc" id="L81">        parent.rect(scoreboardX, scoreboardY, scoreboardWidth, scoreboardHeight);</span>
+<span class="fc" id="L82">    }</span>
+
+    // Announce the winner and display final scores.
+    public void displayFinalScoreboard() {
+<span class="nc" id="L86">        int width = 300;</span>
+<span class="nc" id="L87">        int height = 200;</span>
+<span class="nc" id="L88">        int startX = (parent.width - width) / 2;</span>
+<span class="nc" id="L89">        int startY = (parent.height - height) / 2;</span>
+<span class="nc" id="L90">        int margin = 20;</span>
+<span class="nc" id="L91">        int lineHeight = 30;</span>
+<span class="nc" id="L92">        int headerPosition = startY + margin;</span>
+    
+        // Setup the background and borders for the scoreboard
+<span class="nc" id="L95">        parent.fill(0, 102, 153, 204); // Semi-transparent background using RGBA</span>
+<span class="nc" id="L96">        parent.stroke(255); // White border</span>
+<span class="nc" id="L97">        parent.rect(startX, startY, width, height);</span>
+    
+        // Ensure entries list is initialized and sorted
+<span class="nc bnc" id="L100" title="All 2 branches missed.">        if (entries == null) {</span>
+<span class="nc" id="L101">            entries = new ArrayList&lt;&gt;(scores.entrySet());</span>
+<span class="nc" id="L102">            entries.sort((a, b) -&gt; b.getValue() - a.getValue());</span>
+        }
+    
+        // Display the winner
+<span class="nc bnc" id="L106" title="All 2 branches missed.">        if (!entries.isEmpty()) {</span>
+<span class="nc" id="L107">            Map.Entry&lt;Character, Integer&gt; winner = entries.get(0);</span>
+<span class="nc" id="L108">            parent.textAlign(PApplet.CENTER, PApplet.CENTER);</span>
+<span class="nc" id="L109">            parent.textSize(24);</span>
+<span class="nc" id="L110">            parent.fill(config.getPlayerColor(winner.getKey())); // Use the winner's color</span>
+<span class="nc" id="L111">            parent.text(&quot;Winner: Player &quot; + winner.getKey(), startX + width / 2, headerPosition -  (lineHeight + 30));</span>
+        }
+    
+        // Set up the text properties for listing scores
+<span class="nc" id="L115">        parent.textSize(18);</span>
+<span class="nc" id="L116">        parent.fill(255); // White text for scores</span>
+<span class="nc" id="L117">        parent.text(&quot;Final Scores&quot;, startX + width / 2, headerPosition);</span>
+    
+        // Check if it's time to display the next score
+<span class="nc bnc" id="L120" title="All 4 branches missed.">        if (parent.millis() - lastTimeDisplayed &gt; 700 &amp;&amp; scoreIndex &lt; entries.size()) {</span>
+<span class="nc" id="L121">            lastTimeDisplayed = parent.millis();  // Reset the timer</span>
+<span class="nc" id="L122">            scoreIndex++;  // Increment to allow the next score to be displayed on the next cycle</span>
+        }
+    
+        // Display all scores up to the current scoreIndex
+<span class="nc bnc" id="L126" title="All 2 branches missed.">        for (int i = 0; i &lt; scoreIndex; i++) {</span>
+<span class="nc" id="L127">            Map.Entry&lt;Character, Integer&gt; entry = entries.get(i);</span>
+<span class="nc" id="L128">            parent.fill(config.getPlayerColor(entry.getKey()), 255);</span>
+<span class="nc" id="L129">            int yPos = headerPosition + lineHeight * (i + 1);</span>
+<span class="nc" id="L130">            parent.text(&quot;Player &quot; + entry.getKey() + &quot;: &quot; + entry.getValue(), startX + width / 2, yPos);</span>
+        }
+<span class="nc" id="L132">    }</span>
+}    
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

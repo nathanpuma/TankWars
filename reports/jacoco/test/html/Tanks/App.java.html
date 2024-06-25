@@ -1,0 +1,386 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>App.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">scaffold</a> &gt; <a href="index.source.html" class="el_package">Tanks</a> &gt; <span class="el_source">App.java</span></div><h1>App.java</h1><pre class="source lang-java linenums">package Tanks;
+
+import processing.core.*;
+import processing.event.*;
+
+import java.util.*;
+
+
+
+public class App extends PApplet {
+
+    public static final int CELLSIZE = 32; //8;
+    public static final int CELLHEIGHT = 32;
+
+    public static final int CELLAVG = 32;
+    public static final int TOPBAR = 0;
+<span class="fc" id="L17">    public static int WIDTH = 864; //CELLSIZE*BOARD_WIDTH;</span>
+<span class="fc" id="L18">    public static int HEIGHT = 640; //BOARD_HEIGHT*CELLSIZE+TOPBAR;</span>
+<span class="fc" id="L19">    public static final int BOARD_WIDTH = WIDTH/CELLSIZE;</span>
+    public static final int BOARD_HEIGHT = 20;
+
+    public static final int INITIAL_PARACHUTES = 1;
+
+    public static final int FPS = 30;
+
+    public String configPath;
+
+<span class="fc" id="L28">    public static Random random = new Random();</span>
+
+    private Terrain terrain;
+    private GameConfig config;
+    private Wind wind;
+    private Scoreboard scoreboard;
+    ArrayList&lt;Tank&gt; tanks;
+<span class="fc" id="L35">    private int currentTankIndex = 0; // Start with the first tank</span>
+    private ArrayList&lt;Tree&gt; trees;
+    PImage treeImage;
+    private ArrayList&lt;Explosion&gt; explosions;
+<span class="fc" id="L39">    private boolean waitingForNextLevel = false;</span>
+    private int levelTransitionStartTime;
+    private static final int LEVEL_TRANSITION_DELAY = 1000; // 1000 milliseconds = 1 second
+    PImage parachutImage;
+<span class="fc" id="L43">    private boolean displayFinalScoreboard = false;</span>
+
+
+
+	// Feel free to add any additional methods or attributes you want. Please put classes in different files.
+
+<span class="fc" id="L49">    public App() {</span>
+<span class="fc" id="L50">        this.configPath = &quot;config.json&quot;;</span>
+<span class="fc" id="L51">    }</span>
+
+    /**
+     * Initialise the setting of the window size.
+     */
+	@Override
+    public void settings() {
+<span class="fc" id="L58">        size(WIDTH, HEIGHT);</span>
+        
+<span class="fc" id="L60">    }</span>
+    
+    PShape s;
+
+
+    public void updateExplosionsAndTanks() {
+<span class="fc" id="L66">        Iterator&lt;Explosion&gt; explosionIterator = explosions.iterator();</span>
+<span class="pc bpc" id="L67" title="1 of 2 branches missed.">        while (explosionIterator.hasNext()) {</span>
+<span class="nc" id="L68">            Explosion explosion = explosionIterator.next();</span>
+<span class="nc" id="L69">            explosion.update(); // Update explosion</span>
+<span class="nc bnc" id="L70" title="All 2 branches missed.">            if (!explosion.isActive()) {</span>
+<span class="nc" id="L71">                explosionIterator.remove(); // Remove inactive explosions</span>
+            }
+<span class="nc" id="L73">        }</span>
+    
+<span class="fc bfc" id="L75" title="All 2 branches covered.">        for (Tank tank : tanks) {</span>
+<span class="fc" id="L76">            float terrainHeight = terrain.getHeightAtX(tank.getX());</span>
+<span class="pc bpc" id="L77" title="1 of 2 branches missed.">            if (tank.getY() &gt; terrainHeight) {</span>
+<span class="nc" id="L78">                tank.setY(tank.getY() + 2); // Simulate falling by increasing y-coordinate, '2' is the speed of falling</span>
+<span class="nc bnc" id="L79" title="All 2 branches missed.">                if (tank.getY() &gt; this.height) { // Check if the tank is below the screen</span>
+<span class="nc" id="L80">                    tank.setActive(false); // Optionally deactivate the tank or mark it for removal</span>
+                }
+            } else {
+<span class="fc" id="L83">                tank.recalibratePosition(); // Adjust tank position based on terrain</span>
+            }
+<span class="fc" id="L85">        }</span>
+<span class="fc" id="L86">    }</span>
+    
+
+    
+
+    /**
+     * Load all resources such as images. Initialise the elements such as the player, enemies and map elements.
+     */
+	@Override
+    public void setup() {
+<span class="fc" id="L96">        frameRate(FPS);</span>
+<span class="fc" id="L97">        config = new GameConfig(this, &quot;config.json&quot;); // Initialize game configuration</span>
+<span class="fc" id="L98">        initializeEnvironment(); // Setup wind, scoreboard, etc. before initializing game objects</span>
+<span class="fc" id="L99">        initializeTerrain(); // Load and setup the terrain</span>
+<span class="fc" id="L100">        initializeGameObjects(); // Setup tanks and possibly other objects</span>
+<span class="fc" id="L101">        scoreboard.initializeScores(tanks); // Initialize scores after tanks are fully created</span>
+<span class="fc" id="L102">        explosions = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L103">    }</span>
+    
+
+
+    private void initializeTerrain() {
+<span class="fc" id="L108">        PImage treeImage = config.getTreeImage();  // Retrieve the tree image</span>
+<span class="fc" id="L109">        int foregroundColour = config.getForegroundColour();  // Retrieve the foreground color</span>
+<span class="fc" id="L110">        terrain = new Terrain(this, treeImage, foregroundColour);   // Initialize terrain with the tree image</span>
+<span class="fc" id="L111">        terrain.loadTerrain(config.getLayoutFilename());  // Load the terrain layout</span>
+<span class="fc" id="L112">    }</span>
+    
+
+    private void initializeGameObjects() {
+<span class="fc" id="L116">        tanks = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L117">        trees = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L118">        String[] lines = loadStrings(&quot;level1.txt&quot;);</span>
+    
+<span class="fc bfc" id="L120" title="All 2 branches covered.">        for (int row = 0; row &lt; lines.length; row++) {</span>
+<span class="fc bfc" id="L121" title="All 2 branches covered.">            for (int col = 0; col &lt; lines[row].length(); col++) {</span>
+<span class="fc" id="L122">                char ch = lines[row].charAt(col);</span>
+    
+<span class="fc bfc" id="L124" title="All 4 branches covered.">                if (ch &gt;= 'A' &amp;&amp; ch &lt;= 'I') {</span>
+<span class="fc" id="L125">                    int tankColor = config.getPlayerColor(ch);</span>
+<span class="fc" id="L126">                    Tank tank = new Tank(this, col * CELLSIZE + CELLSIZE / 2.0f, terrain.getHeightAtX(col * CELLSIZE + CELLSIZE / 2.0f), tankColor, terrain, ch, scoreboard);</span>
+<span class="fc" id="L127">                    tanks.add(tank);</span>
+                    
+<span class="fc bfc" id="L129" title="All 2 branches covered.">                } else if (ch == 'T') {</span>
+<span class="fc" id="L130">                    Tree tree = new Tree(this, config.getTreeImage(), col * CELLSIZE + CELLSIZE / 2.0f, terrain);</span>
+<span class="fc" id="L131">                    trees.add(tree);</span>
+                }
+            }
+        }
+
+<span class="fc" id="L136">        tanks.sort((tank1, tank2) -&gt; Character.compare(tank1.getIdentifier(), tank2.getIdentifier()));   //lambda function to sort tanks as it started from B before not sure why</span>
+
+        // Assuming tanks are added in alphabetical order and 'A' is at index 0
+<span class="pc bpc" id="L139" title="1 of 2 branches missed.">        if (!tanks.isEmpty()) {</span>
+<span class="fc" id="L140">            tanks.get(0).setActive(true); // Explicitly set the first tank as active</span>
+<span class="fc" id="L141">            currentTankIndex = 0; // Ensure the index is set to the start</span>
+        }
+<span class="fc" id="L143">    }</span>
+    
+    
+
+    private void initializeEnvironment() {
+<span class="fc" id="L148">        wind = new Wind(this);</span>
+<span class="fc" id="L149">        scoreboard = new Scoreboard(this, config);</span>
+<span class="fc" id="L150">    }</span>
+
+    public void nextTurn() {
+        // Set current tank as inactive
+<span class="nc bnc" id="L154" title="All 4 branches missed.">        if (!tanks.isEmpty() &amp;&amp; currentTankIndex &lt; tanks.size()) {</span>
+<span class="nc" id="L155">            tanks.get(currentTankIndex).setActive(false);</span>
+        }
+    
+        // Move to the next tank, safely handling the index
+<span class="nc" id="L159">        currentTankIndex = (currentTankIndex + 1) % tanks.size();</span>
+<span class="nc" id="L160">        tanks.get(currentTankIndex).setActive(true);</span>
+
+        // Update environmental effects
+<span class="nc bnc" id="L163" title="All 2 branches missed.">        if (wind != null) {</span>
+<span class="nc" id="L164">            wind.updateWind();</span>
+        }
+<span class="nc" id="L166">    }   </span>
+
+    private void restartGame() {
+<span class="nc" id="L169">        config.resetGame(); // Load the first level configuration</span>
+
+<span class="nc" id="L171">        initializeTerrain(); // Reset and redraw the terrain based on the first level</span>
+<span class="nc" id="L172">        initializeGameObjects(); // Reinitialize tanks and other objects based on the first level</span>
+<span class="nc" id="L173">        scoreboard.resetScores(); // Explicitly reset the scoreboard scores</span>
+<span class="nc" id="L174">        scoreboard.initializeScores(tanks); // (Optional) Reinitialize scores based on the new game state</span>
+
+<span class="nc" id="L176">        displayFinalScoreboard = false; // Ensure final scoreboard is not displayed unless game ends</span>
+<span class="nc" id="L177">        currentTankIndex = 0; // Start from the first tank again</span>
+<span class="nc" id="L178">        tanks.get(currentTankIndex).setActive(true); // Ensure the first tank is active</span>
+<span class="nc" id="L179">    }</span>
+
+    public void displayTurnInfo() {
+<span class="pc bpc" id="L182" title="2 of 4 branches missed.">        if (currentTankIndex &gt;= 0 &amp;&amp; currentTankIndex &lt; tanks.size()) {  // Check if index is valid</span>
+<span class="fc" id="L183">            Tank currentTank = tanks.get(currentTankIndex);</span>
+<span class="fc" id="L184">            String turnText = &quot;Player &quot; + currentTank.getIdentifier() + &quot;'s Turn&quot;;</span>
+<span class="fc" id="L185">            textSize(16);</span>
+<span class="fc" id="L186">            fill(0);</span>
+<span class="fc" id="L187">            textAlign(PApplet.LEFT, PApplet.TOP);</span>
+<span class="fc" id="L188">            text(turnText, 10, 10);</span>
+        }
+<span class="fc" id="L190">    }</span>
+
+    public void checkEndOfLevel() {
+        // Check if there's only one tank left or if all tanks are inactive
+<span class="pc bpc" id="L194" title="3 of 4 branches missed.">        if (tanks.size() == 1 &amp;&amp; !waitingForNextLevel) {</span>
+<span class="nc" id="L195">            waitingForNextLevel = true;</span>
+<span class="nc" id="L196">            levelTransitionStartTime = millis();</span>
+            // Check if there are more levels to play
+<span class="nc bnc" id="L198" title="All 2 branches missed.">            if (!config.hasNextLevel()) {</span>
+<span class="nc" id="L199">                displayFinalScoreboard = true; // Only display final scoreboard if no more levels</span>
+            }
+<span class="pc bpc" id="L201" title="3 of 4 branches missed.">        } else if (waitingForNextLevel &amp;&amp; millis() - levelTransitionStartTime &gt; LEVEL_TRANSITION_DELAY) {</span>
+<span class="nc" id="L202">            waitingForNextLevel = false;</span>
+<span class="nc bnc" id="L203" title="All 2 branches missed.">            if (config.hasNextLevel()) {</span>
+<span class="nc" id="L204">                config.loadNextLevel(); // Load the next level configuration</span>
+<span class="nc" id="L205">                initializeTerrain();    // Reinitialize the terrain with the new level data</span>
+<span class="nc" id="L206">                initializeGameObjects(); // Re-setup tanks and other objects for the new level</span>
+            } else {
+                // Optionally handle the game ending if no more levels
+<span class="nc" id="L209">                displayFinalScoreboard = true; // Display final scoreboard now</span>
+            }
+        }
+<span class="fc" id="L212">    }</span>
+    
+    
+
+    public void removeOffscreenTanks() {
+<span class="fc" id="L217">        Iterator&lt;Tank&gt; iterator = tanks.iterator();</span>
+<span class="fc bfc" id="L218" title="All 2 branches covered.">        while (iterator.hasNext()) {</span>
+<span class="fc" id="L219">            Tank tank = iterator.next();</span>
+<span class="pc bpc" id="L220" title="1 of 2 branches missed.">            if (tank.getY() &gt;= height) {  // Check if the tank is below the screen</span>
+<span class="nc" id="L221">                iterator.remove();</span>
+            }
+<span class="fc" id="L223">        }</span>
+<span class="pc bpc" id="L224" title="1 of 2 branches missed.">        if (currentTankIndex &gt;= tanks.size()) {</span>
+<span class="nc" id="L225">            currentTankIndex = Math.max(tanks.size() - 1, 0);  // Reset to the last valid index or 0</span>
+        }
+<span class="fc" id="L227">    }</span>
+    
+    public void removeInactiveTanks() {
+<span class="fc" id="L230">        Iterator&lt;Tank&gt; iterator = tanks.iterator();</span>
+<span class="fc bfc" id="L231" title="All 2 branches covered.">        while (iterator.hasNext()) {</span>
+<span class="fc" id="L232">            Tank tank = iterator.next();</span>
+<span class="pc bpc" id="L233" title="1 of 2 branches missed.">            if (tank.getHealth() &lt;= 0) {  // Check if the tank's health is 0 or less</span>
+<span class="nc" id="L234">                iterator.remove();  // Remove the tank from the list</span>
+            }
+<span class="fc" id="L236">        }</span>
+<span class="fc" id="L237">    }</span>
+
+    public void removeOffscreenTrees() {
+<span class="fc" id="L240">        Iterator&lt;Tree&gt; treeIterator = trees.iterator();</span>
+<span class="fc bfc" id="L241" title="All 2 branches covered.">        while (treeIterator.hasNext()) {</span>
+<span class="fc" id="L242">            Tree tree = treeIterator.next();</span>
+            // Check if the bottom of the tree is below the height of the screen
+<span class="pc bpc" id="L244" title="1 of 2 branches missed.">            if (tree.getY() + tree.getTreeImageHeight() &gt;= height) {</span>
+<span class="nc" id="L245">                treeIterator.remove(); // Remove the tree from the list</span>
+            }
+<span class="fc" id="L247">        }</span>
+<span class="fc" id="L248">    }</span>
+    
+
+    /**
+     * Receive key pressed signal from the keyboard.
+     */
+    @Override
+    public void keyPressed(KeyEvent event) {
+<span class="nc bnc" id="L256" title="All 4 branches missed.">        if (tanks.size() &gt; 0 &amp;&amp; currentTankIndex &lt; tanks.size()) {</span>
+<span class="nc" id="L257">            Tank currentTank = tanks.get(currentTankIndex);</span>
+
+<span class="nc bnc" id="L259" title="All 11 branches missed.">            switch (event.getKeyCode()) {</span>
+                case PApplet.UP:
+<span class="nc" id="L261">                    currentTank.rotateTurretLeft();</span>
+<span class="nc" id="L262">                    break;</span>
+                case PApplet.DOWN:
+<span class="nc" id="L264">                    currentTank.rotateTurretRight();</span>
+<span class="nc" id="L265">                    break;</span>
+                case PApplet.LEFT:
+<span class="nc" id="L267">                    currentTank.moveLeft();</span>
+<span class="nc" id="L268">                    break;</span>
+                case PApplet.RIGHT:
+<span class="nc" id="L270">                    currentTank.moveRight();</span>
+<span class="nc" id="L271">                    break;</span>
+                case ' ':
+<span class="nc" id="L273">                    currentTank.fire(wind, explosions, terrain, tanks);</span>
+<span class="nc" id="L274">                    nextTurn();</span>
+<span class="nc" id="L275">                    break;</span>
+                case 'W':
+                case 'w':
+<span class="nc" id="L278">                    currentTank.increasePower();</span>
+<span class="nc" id="L279">                    break;</span>
+                case 'S':
+                case 's':
+<span class="nc" id="L282">                    currentTank.decreasePower();</span>
+<span class="nc" id="L283">                    break;</span>
+                case 'R':
+                case 'r':
+<span class="nc bnc" id="L286" title="All 2 branches missed.">                    if (!displayFinalScoreboard) {</span>
+<span class="nc" id="L287">                        currentTank.repair(); // Handle repair powerup</span>
+                    } else {
+<span class="nc" id="L289">                        restartGame();</span>
+                    }
+<span class="nc" id="L291">                    break;  // Ensure this break is inside the else block to avoid falling through</span>
+                case 'F':
+                case 'f':
+<span class="nc" id="L294">                    currentTank.refuel(); // Handle fuel powerup</span>
+<span class="nc" id="L295">                    break;</span>
+                case 'H':
+                case 'h':
+<span class="nc" id="L298">                    tanks.get(currentTankIndex).activateShield();</span>
+                    break; 
+            }
+        }
+<span class="nc" id="L302">    }</span>
+    
+    
+
+    /**
+     * Receive key released signal from the keyboard.
+     */
+	@Override
+    public void keyReleased(){
+        
+<span class="nc" id="L312">    }</span>
+
+    @Override
+    public void mousePressed(MouseEvent e) {
+        //TODO - powerups, like repair and extra fuel and teleport? - or maybe leave this as an extension
+
+
+<span class="nc" id="L319">    }</span>
+
+    @Override
+    public void mouseReleased(MouseEvent e) {
+
+<span class="nc" id="L324">    }</span>
+    
+
+    /**
+     * Draw all elements in the game by current frame.
+     */
+    @Override
+    public void draw() {
+<span class="fc" id="L332">        background(0);</span>
+<span class="fc" id="L333">        config.displayBackground(WIDTH, HEIGHT);</span>
+<span class="fc" id="L334">        terrain.display();</span>
+
+<span class="pc bpc" id="L336" title="1 of 2 branches missed.">        if (!displayFinalScoreboard) {</span>
+<span class="fc" id="L337">            displayTurnInfo();</span>
+<span class="fc" id="L338">            wind.displayWind();</span>
+<span class="fc" id="L339">            scoreboard.display();</span>
+
+<span class="fc bfc" id="L341" title="All 2 branches covered.">            for (Tree tree : trees) {</span>
+<span class="fc" id="L342">                tree.updatePosition();</span>
+<span class="fc" id="L343">                tree.display();</span>
+<span class="fc" id="L344">            }</span>
+
+<span class="fc" id="L346">            removeOffscreenTrees();</span>
+
+<span class="fc bfc" id="L348" title="All 2 branches covered.">            for (Tank tank : tanks) {</span>
+<span class="fc" id="L349">                tank.calibratePosition();</span>
+<span class="fc" id="L350">            }</span>
+
+<span class="fc" id="L352">            Tank activeTank = null;</span>
+<span class="fc bfc" id="L353" title="All 2 branches covered.">            for (Tank tank : tanks) {</span>
+<span class="fc" id="L354">                tank.updatePosition(false);</span>
+<span class="fc" id="L355">                tank.updateProjectile(explosions, terrain, tanks);</span>
+<span class="fc" id="L356">                tank.display();</span>
+<span class="fc bfc" id="L357" title="All 2 branches covered.">                if (tank.isActive()) {</span>
+<span class="fc" id="L358">                    activeTank = tank;</span>
+<span class="fc" id="L359">                    activeTank.displayHealthBar();</span>
+<span class="fc" id="L360">                    activeTank.displayPower();</span>
+                }
+<span class="fc" id="L362">            }</span>
+
+<span class="pc bpc" id="L364" title="1 of 2 branches missed.">            for (Explosion explosion : explosions) {</span>
+<span class="nc" id="L365">                explosion.update();</span>
+<span class="nc" id="L366">                explosion.display();</span>
+<span class="nc bnc" id="L367" title="All 2 branches missed.">                if (!explosion.isActive()) {</span>
+<span class="nc" id="L368">                    explosions.remove(explosion);</span>
+                }
+<span class="nc" id="L370">            }</span>
+
+<span class="fc" id="L372">            updateExplosionsAndTanks();</span>
+<span class="fc" id="L373">            removeOffscreenTanks();</span>
+<span class="fc" id="L374">            removeInactiveTanks();</span>
+<span class="fc" id="L375">            checkEndOfLevel();</span>
+<span class="fc" id="L376">        } else {</span>
+<span class="nc" id="L377">            scoreboard.displayFinalScoreboard();</span>
+        }
+<span class="fc" id="L379">    }</span>
+
+    public static void main(String[] args) {
+<span class="nc" id="L382">        PApplet.main(&quot;Tanks.App&quot;);</span>
+<span class="nc" id="L383">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Explosion.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">scaffold</a> &gt; <a href="index.source.html" class="el_package">Tanks</a> &gt; <span class="el_source">Explosion.java</span></div><h1>Explosion.java</h1><pre class="source lang-java linenums">package Tanks;
+
+import processing.core.PApplet;
+import java.util.ArrayList;
+
+public class Explosion {
+    private PApplet app;
+    private float x, y;  // Center coordinates of the explosion
+    private float radius;  // Current radius of the main explosion circle
+    private boolean active;  // Indicates if the explosion is still active
+    private static final float MAX_RADIUS = 30;  // Maximum radius for the explosion
+    private Terrain terrain;  // Reference to the Terrain object
+    private ArrayList&lt;Tank&gt; tanks;  // Reference to the list of tanks
+    private Tank owner;
+
+<span class="nc" id="L16">    public Explosion(PApplet app, float x, float y, Terrain terrain, ArrayList&lt;Tank&gt; tanks, Tank owner) {</span>
+<span class="nc" id="L17">        this.app = app;</span>
+<span class="nc" id="L18">        this.x = x;</span>
+<span class="nc" id="L19">        this.y = y;</span>
+<span class="nc" id="L20">        this.radius = 0;</span>
+<span class="nc" id="L21">        this.active = true;</span>
+<span class="nc" id="L22">        this.terrain = terrain;</span>
+<span class="nc" id="L23">        this.tanks = tanks;</span>
+<span class="nc" id="L24">        this.owner = owner;</span>
+<span class="nc" id="L25">    }</span>
+
+
+    
+    public void update() {
+<span class="nc bnc" id="L30" title="All 4 branches missed.">        if (active &amp;&amp; radius &lt; MAX_RADIUS) {</span>
+<span class="nc" id="L31">            radius += 3;</span>
+<span class="nc bnc" id="L32" title="All 2 branches missed.">            if (radius &gt;= MAX_RADIUS) {</span>
+<span class="nc" id="L33">                active = false;</span>
+<span class="nc" id="L34">                terrain.destroyTerrain(x, y, MAX_RADIUS, owner); // Pass owner as the destroyer</span>
+<span class="nc" id="L35">                applyDamageToTanks();</span>
+            }
+        }
+<span class="nc" id="L38">    }</span>
+
+
+    
+
+    private void applyDamageToTanks() {
+<span class="nc bnc" id="L44" title="All 2 branches missed.">        for (Tank tank : tanks) {</span>
+<span class="nc" id="L45">            float distance = PApplet.dist(x, y, tank.getX(), tank.getY());</span>
+<span class="nc bnc" id="L46" title="All 2 branches missed.">            if (distance &lt; MAX_RADIUS) {</span>
+<span class="nc" id="L47">                int damage = (int)((1 - (distance / MAX_RADIUS)) * 60);</span>
+<span class="nc" id="L48">                tank.applyDamage(damage, owner);  // Pass the owner as the attacker</span>
+            }
+<span class="nc" id="L50">        }</span>
+<span class="nc" id="L51">    }</span>
+    
+    
+    
+    
+    
+    
+
+    public void display() {
+<span class="nc bnc" id="L60" title="All 2 branches missed.">        if (active) {</span>
+            // Draw the red circle
+<span class="nc" id="L62">            app.fill(255, 0, 0);</span>
+<span class="nc" id="L63">            app.stroke(255, 0, 0);  // Red</span>
+<span class="nc" id="L64">            app.ellipse(x, y, radius * 2, radius * 2);</span>
+
+            // Draw the orange circle at 50% of the main radius
+<span class="nc" id="L67">            app.fill(255, 165, 0);</span>
+<span class="nc" id="L68">            app.stroke(255, 165, 0);  // Orange</span>
+<span class="nc" id="L69">            app.ellipse(x, y, radius, radius);</span>
+
+            // Draw the yellow circle at 20% of the main radius
+<span class="nc" id="L72">            app.fill(255, 255, 0);</span>
+<span class="nc" id="L73">            app.stroke(255, 255, 0);  // Yellow</span>
+<span class="nc" id="L74">            app.ellipse(x, y, radius * 0.4f, radius * 0.4f);</span>
+        }
+<span class="nc" id="L76">    }</span>
+
+    public boolean isActive() {
+<span class="nc" id="L79">        return active;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>
